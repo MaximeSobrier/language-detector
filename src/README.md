@@ -1,1 +1,0 @@
-Efficient Language Detection for Multilingual Documents
