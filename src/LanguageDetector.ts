@@ -1,7 +1,9 @@
 "use strict";
 
 //@ts-ignore
-import stats from "./languages.json";
+// import stats from `${__dirname}/languages.json`;
+const stats = require(`${__dirname}/languages.json`);
+
 
 interface IObjectKeys {
   [key: string]: number;

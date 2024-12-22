@@ -4,14 +4,18 @@
   "description": "Efficient Language Detection for Multilingual Documents",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "build": "node_modules/typescript/bin/tsc && cp datasets/languages.stats.10k.compact.json dist/languages.json"
   },
   "author": "Maxime Sobrier",
   "license": "MIT",
   "git": "",
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.11.25",
-    "typescript": "^5.0.4"
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
   }
 }
