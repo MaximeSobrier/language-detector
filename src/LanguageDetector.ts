@@ -255,12 +255,13 @@ export default class LanguageDetector {
     return scoreWord;
   }
 
-  getLanguages(rawText: string = '') : string[] {
+  getLanguages(rawText: string = '', minimumRatio : number = 0.8) : string[] {
     let scoreWord : IObjectKeys = this.getLanguagesWithScores(rawText);
 
-    let results = Object.keys(scoreWord).filter((language: string) => scoreWord[language] > 0).sort((a: string, b: string) => scoreWord[b] - scoreWord[a]); // sort from highest score to lowest score
+    let results = Object.keys(scoreWord).filter((language: string) => scoreWord[language] > 0).sort((a: string, b: string) => scoreWord[b] - scoreWord[a]);  // sort from highest score to lowest score
+    results = results.filter((language: string) => scoreWord[language] >= minimumRatio * scoreWord[results[0]]); // keep only languages with a minimum ratio to the highest score
 
-    //TODO: make thi optional
+    //TODO: make this optional
     // For similar languages, keep the languages with the higest score
     for(let similar of this.languageInfo.similar) {
       while (similar.includes(results[0]) && similar.includes(results[1]) && scoreWord[results[2]] > 0) {

@@ -18,6 +18,7 @@ describe('LanguageDetector', () => {
         const text = 'This is an English text.';
         const results = detector.getLanguages(text);
         expect(results[0]).toBe('en');
+        expect(results.length).toBe(1)
     });
 
     test('should detect Spanish language', () => {
@@ -40,6 +41,12 @@ describe('LanguageDetector', () => {
 
     test('should return null for empty text', () => {
         const text = '';
+        const results = detector.getLanguages(text);
+        expect(results.length).toBe(0);
+    });
+
+    test('should return null for empty text', () => {
+        const text = ' 1 222 !@#';
         const results = detector.getLanguages(text);
         expect(results.length).toBe(0);
     });
