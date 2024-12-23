@@ -1,8 +1,7 @@
 "use strict";
 
 //@ts-ignore
-// import stats from `${__dirname}/languages.json`;
-const stats = require(`${__dirname}/languages.json`);
+const stats = require("./languages.json"); // loads top words and letters for all languages
 
 
 interface IObjectKeys {
@@ -11,15 +10,19 @@ interface IObjectKeys {
 
 export default class LanguageDetector {
   private languageInfo : any = {
+    // no Ascii characters
     noASCII: ['ja', 'zh', 'te', 'he', 'ko', 'ml', 'my', 'ne', 'pa', 'ps', 'sa', 'si', 'ta', 'th', 'zhs', 'zht'],
+    // languages with special letters
     letters: ['bg', 'cs', 'el', 'et', 'is', 'ru', 'sr', 'az', 'bn', 'fa', 'fr', 'hu', 'is', 'kk', 'lt', 'lv', 'mk', 'mn', 'pl', 'ro', 'sk', 'sv', 'tr', 'uk', 'vi', 'he', 'ka'], // , 'da', 'de', 'fi', 'fr' - , 'gu', 'hi', 'ar', 'am', 'hy', 'ka', 'km', 'kn', 'ko', 'ml', 'ne', 'ps', 'sa', 'si', 'ta', 'te', 'th', 'ur', 'pt'
+    // languages with only characters (no words)
     lettersOnly: ['ja', 'th', 'ko', 'zh', 'zhs', 'zht', 'km'],
+    // compact languages (languages wit few signs to convey a lot of information)
     compact: ['ja', 'ko', 'zh', 'zhs', 'zht'],
+    // languages which are similiar to another
     similar: [
       ['es', 'ca', 'gl'], // Spanish, Catalan and Galician
       ['id', 'ms'], // Indonesian and Malay 
       ['no', 'nb'], // Norwegian
-      // ['zh', 'zhs', 'zht'], // Chinese
       ['zh', 'ja'], // Chinese and Japanese -- remove later
       ['nl', 'af'], // Dutch and Afrikaans
       ['tr', 'az']
@@ -28,11 +31,15 @@ export default class LanguageDetector {
   private languages: string[] = [];
   private debugOn = false;
 
+  /** 
+    Build the dataset for all supported languages
 
+    @param debug - Enable debug mode
+  */
   constructor(debug : boolean = false) {
     this.debugOn = debug;
-    // this.load(file);
 
+    // Merge top words and letters from code to english
     if (stats['code'] && stats['en']) {
       for (let word of Object.keys(stats['code']['topWords'])) {
         if (! stats['en']['topWords'][word]) {
@@ -46,6 +53,7 @@ export default class LanguageDetector {
       delete stats['code'];
     }
 
+    // Merge top words and letters from misc to english
     if (stats['misc'] && stats['en']) {
       for(let word of Object.keys(stats['misc']['topWords'])) {
         if (! stats['en']['topWords'][word]) {
@@ -62,16 +70,22 @@ export default class LanguageDetector {
     this.languages = Object.keys(stats);
   }
 
+  /** 
+    Get the list of supported languages
+    @returns List of supported languages
+  */
   getSupportedLanguages() : string[] {
+    //TODO: check if zhs or zht is present
+    //TODO: merge other languages
+    // Merge different alphbets into one (like simplified nd traditional chinese into chinese)
     return this.languages.filter((language: string) => !['zhs', 'zht'].includes(language)).concat(['zh']);
   }
 
   getLanguagesWithScores(rawText: string = '') : IObjectKeys {
     let scoreWord : IObjectKeys = {};
     
-
     const words = rawText.replace(/-+|[’'´‘]|[\/,&•‎…\-±…»·\–¶±·\– ³¯\—›；；《》〔〕\(\)．–\u200B\u2588\u2000-\u2BFF\u2E00-\u2E7F\uE000-\uF8FF\uFE00-\uFE2F\uFF00-\uFFFF]|https?\:\/\/\S+|mmMwWLliI0fiflO&1|BESbswy/gi, ' ') // no change
-      .replace(/word word word word\s/g, '') // santiizeText
+      .replace(/word word word word\s/g, '')
       .replace(/[0-9²\)\(\]\[\+@#%\&\*\_\.=\{\}'",;\:><!\|“”\?„‘）（く‹‹\u200e˝¾¿¼¸…½°º‚´»€±·¯\—›零一二三四五六七八九十百两千]/g, '')
       .replace(/\p{Extended_Pictographic}/ug, '')
       .replace(/[]/g, '') // sanitizeWords
@@ -86,18 +100,19 @@ export default class LanguageDetector {
 
     rawText = '';
 
-    const maxOccurences = 2; // 3
+    const maxOccurences = 2;
 
     for(const language of this.languages) {      
-      scoreWord[language] = 0;     // continue;
-      let matchWords : IObjectKeys = {};
-      let scoreLetter = 0;
-      let scoreWordsLetters = 0;
+      scoreWord[language] = 0;     // initialize score for words
+      let matchWords : IObjectKeys = {};  // keep track of words seen 
+      let scoreLetter = 0;        // initialize score for letters
+      let scoreWordsLetters = 0;  // initialie score for words thst include a special letter
       let totalLetters = 0;
       let matchLetters = 0;
       let matchLetterWords = 0;
       let totalWords = 0;
 
+      //TODO: check the content of the dataset to get these attributes intead of hardcoding them
       const lettersOnly = this.languageInfo.lettersOnly.includes(language);
       const lettersOK = this.languageInfo.letters.includes(language);
 
@@ -115,7 +130,7 @@ export default class LanguageDetector {
         }
 
 
-        let match = false;
+        let match = false; // used to check if the word is in the top words
         const topLettersRatio = stats[language]['topLettersTotal'];
         
 
@@ -123,14 +138,16 @@ export default class LanguageDetector {
           totalLetters += word.length; // used only with letters
         }
 
-        if (!lettersOnly && word.length >= 2) { // not necessary with condition checked earlier:  && matchOccurences] < maxOccurences
+        if (!lettersOnly && word.length >= 2) {
           if (stats[language]['topWords'].hasOwnProperty(word)) { 
             match = true;
             scoreWord[language] = scoreWord[language] + stats[language]['topWords'][word] * Math.pow(word.length - 1, 2);
           }
         }
 
+        //TODO: move check on topLettersRatio to letterOK
         if (lettersOK && !match && topLettersRatio >= 200) { // add condition used in formula
+          // Use the word stripped of ASCII characters for languages taht don't use ASCII
           if (this.languageInfo.noASCII.includes(language)) {
             let asciiWord = this.noASCII(word);
             word = asciiWord;
@@ -150,6 +167,7 @@ export default class LanguageDetector {
 
           let score = 0;
           
+          // Check if the word contains a special letter
           for (const letter of word) {
             const value = stats[language]['topLetters'][letter];
             if (value && value > 0) {
@@ -164,7 +182,7 @@ export default class LanguageDetector {
           }
         }
 
-        if (lettersOnly) { //  || languageInfo.letters.includes(language)
+        if (lettersOnly) {
           totalWords++;
           if (this.languageInfo.noASCII.includes(language)) {
             let asciiWord = this.noASCII(word);
@@ -187,17 +205,17 @@ export default class LanguageDetector {
         continue;
 
       const expected = stats[language]['topLettersTotal'];
-      const seen = matchLetters / totalLetters * 1000;
+      const seen = matchLetters / totalLetters * 1000; // ratio of special letters
 
       const lettersComputeOK = (totalWords / matchLetterWords < 10) && (scoreWord[language] > 0); // at least one word matches 
 
       if (lettersOK && (expected >= 200 || lettersComputeOK)) { // minimum ratio expected to be useful
 
-        if (seen < expected * 0.2 && totalWords / matchLetterWords > 10) {
+        if (seen < expected * 0.2 && totalWords / matchLetterWords > 10) { // low ratio: penalty
           const penalty = expected * totalLetters / 1000;
           scoreWord[language] -= penalty;
         }
-        else if (seen >= expected * 0.5) {
+        else if (seen >= expected * 0.5) { // high ratio: bonus
           scoreWord[language] += scoreWordsLetters * matchLetters / totalLetters; // add letters to words
         }
       }
@@ -207,7 +225,7 @@ export default class LanguageDetector {
 
         const bonus = expected * totalLetters / 1000;
 
-        if (seen >= expected * 0.5 || (matchLetters >= totalWords / 2 && this.languageInfo.compact.includes(language))) { // good for chinese, but probably not other languages (turkish, russian, etc => maybe a new flag for them?)
+        if (seen >= expected * 0.5 || (matchLetters >= totalWords / 2 && this.languageInfo.compact.includes(language))) { // high ratio: bonus
           scoreWord[language] += bonus;
         }
         else if (seen >= expected * 0.3) { // Mix of chinese and english
@@ -216,16 +234,18 @@ export default class LanguageDetector {
         else if (seen >= expected * 0.2) { // Mix of chinese and english
           scoreWord[language] += bonus/4;
         }
-        else if (seen < expected * 0.2) { // problem with chinese mixed with english (00d48140-34d1-11ee-9292-1d8ae41489b4), but otherwise over score for just 2 words of thai (000d87d0-367e-11ee-b775-7de4c498fe3c)
+        else if (seen < expected * 0.2) {
           scoreWord[language] -= bonus;
         } 
       }
     }
 
+    // Merge simplified and traditional chinese
     scoreWord['zh'] = Math.max(scoreWord['zh'] || 0, scoreWord['zhs'] || 0, scoreWord['zht'] || 0);
     delete scoreWord['zhs'];
     delete scoreWord['zht'];
 
+    // Merge languages with multiple alphabets
     scoreWord['bn'] = Math.max(scoreWord['bn'] || 0, scoreWord['bnr'] || 0);
     delete scoreWord['bnr'];
 
@@ -238,24 +258,25 @@ export default class LanguageDetector {
   getLanguages(rawText: string = '') : string[] {
     let scoreWord : IObjectKeys = this.getLanguagesWithScores(rawText);
 
-    let results = Object.keys(scoreWord).filter((language: string) => scoreWord[language] > 0).sort((a: string, b: string) => scoreWord[b] - scoreWord[a]); // fast
+    let results = Object.keys(scoreWord).filter((language: string) => scoreWord[language] > 0).sort((a: string, b: string) => scoreWord[b] - scoreWord[a]); // sort from highest score to lowest score
 
+    //TODO: make thi optional
+    // For similar languages, keep the languages with the higest score
     for(let similar of this.languageInfo.similar) {
       while (similar.includes(results[0]) && similar.includes(results[1]) && scoreWord[results[2]] > 0) {
         this.debug(`Similar languages ${results[0]} ${results[1]} => ${results[2]}`);
         results.splice(1, 1);
-        // break;
       }
     }
 
     return results;
   }
 
-  noASCII(word : string = '') : string {
+  private noASCII(word : string = '') : string {
     return word.replace(/[!-~]/g, '');
   }
 
-  debug(message : string = '') {
+  private debug(message : string = '') {
     if (this.debugOn) {
       console.log(message);
     }
