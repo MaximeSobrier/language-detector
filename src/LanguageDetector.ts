@@ -77,10 +77,15 @@ export default class LanguageDetector {
   getSupportedLanguages() : string[] {
     //TODO: check if zhs or zht is present
     //TODO: merge other languages
-    // Merge different alphbets into one (like simplified nd traditional chinese into chinese)
+    // Merge different alphabets into one (like simplified nd traditional chinese into chinese)
     return this.languages.filter((language: string) => !['zhs', 'zht'].includes(language)).concat(['zh']);
   }
 
+  /** 
+    Get the score for all languages supported
+    @param text - Text to analyze
+    @returns <language>: <score> key pairs
+  */
   getLanguagesWithScores(rawText: string = '') : IObjectKeys {
     let scoreWord : IObjectKeys = {};
     
@@ -255,6 +260,12 @@ export default class LanguageDetector {
     return scoreWord;
   }
 
+  /** 
+    Get the score for all languages supported
+    @param text - Text to analyze
+    @param minimumRatio - Minimum score ratio to report matching languages - default: 0.8
+    @returns Array of languages found in the text
+  */
   getLanguages(rawText: string = '', minimumRatio : number = 0.8) : string[] {
     let scoreWord : IObjectKeys = this.getLanguagesWithScores(rawText);
 
@@ -262,7 +273,7 @@ export default class LanguageDetector {
     results = results.filter((language: string) => scoreWord[language] >= minimumRatio * scoreWord[results[0]]); // keep only languages with a minimum ratio to the highest score
 
     //TODO: make this optional
-    // For similar languages, keep the languages with the higest score
+    // For similar languages, keep the languages with the highest score
     for(let similar of this.languageInfo.similar) {
       while (similar.includes(results[0]) && similar.includes(results[1]) && scoreWord[results[2]] > 0) {
         this.debug(`Similar languages ${results[0]} ${results[1]} => ${results[2]}`);
