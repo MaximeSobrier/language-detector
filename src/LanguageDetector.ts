@@ -8,6 +8,14 @@ interface IObjectKeys {
   [key: string]: number;
 }
 
+interface IStringKeys {
+  [key: string]: string;
+}
+
+interface IArrayKeys {
+  [key: string]: string[];
+}
+
 export default class LanguageDetector {
   private languageInfo : any = {
     // no Ascii characters
@@ -30,23 +38,28 @@ export default class LanguageDetector {
   };
   private languages: string[] = [];
   private debugOn = false;
+  private mergeResults : IArrayKeys = { };
 
   /** 
     Build the dataset for all supported languages
 
     @param debug - Enable debug mode
   */
-  constructor(debug : boolean = false) {
+  constructor(mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] ,  },  
+    mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'},  
+    debug : boolean = false) {
     this.debugOn = debug;
+    this.mergeResults = mergeResults;
 
-    // Merge top words and letters from code to english
-    if (stats['code'] && stats['en']) {
+    // Merge code dataset
+    if ((stats['code'] && mergeDatasets['code']) && stats[mergeDatasets['code']]) {
+      const destination = mergeDatasets['code'];
       for (let word of Object.keys(stats['code']['topWords'])) {
-        if (! stats['en']['topWords'][word]) {
-          stats['en']['topWords'][word] = stats['code']['topWords'][word] / 2;
+        if (! stats[destination]['topWords'][word]) {
+          stats[destination]['topWords'][word] = stats['code']['topWords'][word] / 2;
         }
         else {
-          stats['en']['topWords'][word] += stats['code']['topWords'][word] / 2;
+          stats[destination]['topWords'][word] += stats['code']['topWords'][word] / 2;
         }
       }
 
@@ -54,13 +67,14 @@ export default class LanguageDetector {
     }
 
     // Merge top words and letters from misc to english
-    if (stats['misc'] && stats['en']) {
+    if ((stats['misc'] && mergeDatasets['misc']) && stats[mergeDatasets['misc']]) {
+      const destination = mergeDatasets['misc'];
       for(let word of Object.keys(stats['misc']['topWords'])) {
-        if (! stats['en']['topWords'][word]) {
-          stats['en']['topWords'][word] = stats['misc']['topWords'][word] / 10;
+        if (! stats[destination]['topWords'][word]) {
+          stats[destination]['topWords'][word] = stats['misc']['topWords'][word] / 10;
         }
         else {
-          stats['en']['topWords'][word] += stats['misc']['topWords'][word] / 10;
+          stats[destination]['topWords'][word] += stats['misc']['topWords'][word] / 10;
         }
       }
 
@@ -75,10 +89,20 @@ export default class LanguageDetector {
     @returns List of supported languages
   */
   getSupportedLanguages() : string[] {
-    //TODO: check if zhs or zht is present
-    //TODO: merge other languages
-    // Merge different alphabets into one (like simplified nd traditional chinese into chinese)
-    return this.languages.filter((language: string) => !['zhs', 'zht'].includes(language)).concat(['zh']);
+    // Merge languages
+    let add : string[] = []
+    let remove : string[] = []
+
+    for (const destination of Object.keys(this.mergeResults)) { // 'zh': ['zhs', 'zht']
+      const merged = this.mergeResults[destination];
+      remove = remove.concat(merged);
+
+      if (!this.languages.includes(destination)) {
+        add.push(destination);
+      }
+    }
+
+    return this.languages.filter((language: string) => !remove.includes(language)).concat(add);
   }
 
   /** 
