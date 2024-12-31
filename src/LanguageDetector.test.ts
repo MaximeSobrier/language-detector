@@ -1,5 +1,6 @@
 import {describe, expect, test,  beforeEach} from '@jest/globals';
 import LanguageDetector from './LanguageDetector';
+const fs = require('fs');
 
 
 describe('LanguageDetector', () => {
@@ -14,24 +15,22 @@ describe('LanguageDetector', () => {
       expect(languages.length).toBeGreaterThan(0);
     });
 
-    test('should detect English language', () => {
-        const text = 'This is an English text.';
-        const results = detector.getLanguages(text);
-        expect(results[0]).toBe('en');
-        expect(results.length).toBe(1)
+
+
+    const data = fs.readdirSync('testdata', { withFileTypes: true })
+    .filter((dirent : any) => dirent.isDirectory())
+    .map((dirent : any) => dirent.name)
+
+    data.forEach((language : string) => {
+        test(`should detect ${language} language`, () => {
+            const text = fs.readFileSync(`testdata/${language}/short.txt`, 'utf8');
+            const results = detector.getLanguages(text);
+            console.log(results);
+            expect(results[0]).toBe(language);
+        });
     });
 
-    test('should detect Spanish language', () => {
-        const text = 'Este es un texto en Español.';
-        const results = detector.getLanguages(text);
-        expect(results[0]).toBe('es');
-    });
 
-    test('should detect French language', () => {
-        const text = 'Ceci est un texte en Français.';
-        const results = detector.getLanguages(text);
-        expect(results[0]).toBe('fr');
-    });
 
     test('should return null for unknown language', () => {
         const text = 'Dies ist ein deutscher Text.';
