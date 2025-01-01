@@ -38,13 +38,17 @@ const detector = new LanguageDetector();
 
 ### Methods
 
-#### LanguageDetector(mergeResults /* { 'zh': ['zhs', 'zht'] , 'bn': ['bnr'], 'hi': ['hir'] } */ , mergeDatasets /* {'code': 'en', 'misc': 'en'} */ , skipSimilar /* false */)
+#### LanguageDetector(mergeResults?, mergeDatasets?, skipSimilar?)
 
 Creating an instance of LanguageDetector
 
-* ```mergeResults```: Merge languages with different alphabets (simplified and traditional chinese, Bengali and Romanized Bengali, etc.).
-* ```mergeDatasets```: Merge special datasets with a language.
-* ```skipSimilar```: Skip similar languages (for top result only).
+* ```mergeResults```: Merge languages with different alphabets (simplified and traditional chinese, Bengali and Romanized Bengali, etc.). Example: ```{ 'zh': ['zhs', 'zht'] , 'bn': ['bnr'], 'hi': ['hir'] }```
+* ```mergeDatasets```: Merge special datasets with a language. Example: ```{'code': 'en', 'misc': 'en'}```
+* ```skipSimilar```: Skip similar languages (for top result only). False by default
+
+
+
+
 
 ### Example
 
