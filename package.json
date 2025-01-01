@@ -2,12 +2,9 @@
   "name": "language-detector",
   "version": "0.1.0",
   "description": "Efficient Language Detection for Multilingual Documents",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/MaximeSobrier/language-detector.git"
-  },
+  "main": "dist/LanguageDetector.js",
+  "types": "dist/LanguageDetector.d.ts",
+  "repository": "github:MaximeSobrier/language-detector",
   "keywords": [
     "language",
     "detection",
