@@ -1,6 +1,6 @@
 {
   "name": "language-detector-web",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Efficient Language Detection for Multilingual Documents",
   "main": "dist/LanguageDetector.js",
   "types": "dist/LanguageDetector.d.ts",

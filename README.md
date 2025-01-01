@@ -40,20 +40,40 @@ const detector = new LanguageDetector();
 
 #### LanguageDetector(mergeResults?, mergeDatasets?, skipSimilar?)
 
-Creating an instance of LanguageDetector
+Creates an instance of LanguageDetector
 
 * ```mergeResults```: Merge languages with different alphabets (simplified and traditional chinese, Bengali and Romanized Bengali, etc.). Example: ```{ 'zh': ['zhs', 'zht'] , 'bn': ['bnr'], 'hi': ['hir'] }```
 * ```mergeDatasets```: Merge special datasets with a language. Example: ```{'code': 'en', 'misc': 'en'}```
 * ```skipSimilar```: Skip similar languages (for top result only). False by default
 
 
+#### getSupportedLanguages()
 
+Returns the list of supported languages as ISO 639-1 code: en (English), fr (French), nl (Dutch), etc.
+
+
+### getLanguagesWithScores(rawText)
+
+Returns the score for each language supported:
+
+```json
+{ 'en': 25.6, 'zh': -136.0', 'nl': 0, ...}
+```
+
+Scores can be 0 or negative. This library was designed and tested with the visible text of the web page, without any HTML content. This functions cleans up the text: emojis are removed, etc. Scores will likely increase with the length of the page.
+
+
+### getLanguages(rawText, minimumRatio?)
+
+Returns the most likely language(s) used in the page
 
 
 ### Example
 
 
 ### Configuration
+
+The list of supported languages and their attributes (top letters and words) are contained in languages.json. This library is built with the top 10,000 words and letters for each language. Other datasets are available on [][GitHub](https://github.com/MaximeSobrier/language-detector): top 1k, 2k, 5k, 10k and 20k. See the research paper (coming soon) for the performances of each dataset.
 
 ## Tests
 

@@ -112,7 +112,7 @@ export default class LanguageDetector {
 
   /** 
     Get the score for all languages supported
-    @param text - Text to analyze
+    @param rawText - Text to analyze
     @returns <language>: <score> key pairs
   */
   getLanguagesWithScores(rawText: string = '') : IObjectKeys {
