@@ -2,14 +2,29 @@
   "name": "language-detector",
   "version": "0.1.0",
   "description": "Efficient Language Detection for Multilingual Documents",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MaximeSobrier/language-detector.git"
+  },
+  "keywords": [
+    "language",
+    "detection",
+    "nlp",
+    "multilingual",
+    "documents"
+  ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "jest",
     "build": "node_modules/typescript/bin/tsc && cp datasets/languages.stats.10k.compact.json dist/languages.json"
   },
   "author": "Maxime Sobrier",
   "license": "MIT",
-  "git": "",
+  "homepage": "https://icategorize.com/",
   "devDependencies": {
     "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.14",
