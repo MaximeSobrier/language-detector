@@ -37,7 +37,7 @@ export default class LanguageDetector {
   };
   private languages: string[] = [];
   private debugOn = false;
-  private skipSimilarOn = true;
+  private skipSimilarOn = false;
   private mergeResults : IArrayKeys = { };
 
   /** 
@@ -49,7 +49,7 @@ export default class LanguageDetector {
   */
   constructor(mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] , 'bn': ['bnr'], 'hi': ['hir'] },  
     mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'}, 
-    skipSimilar : boolean = true, 
+    skipSimilar : boolean = false, 
     debug : boolean = false) {
     this.debugOn = debug;
     this.mergeResults = mergeResults;
