@@ -1,4 +1,4 @@
-import {describe, expect, test,  beforeEach} from '@jest/globals';
+import {describe, expect, test,  beforeEach, afterEach} from '@jest/globals';
 import LanguageDetector from './LanguageDetector';
 import fs from 'fs';
 
@@ -19,7 +19,7 @@ describe('LanguageDetector', () => {
       expect(languages).toContain('zh');
 
       expect(languages).toContain('bn');
-        expect(languages).not.toContain('bnr');
+      expect(languages).not.toContain('bnr');
     });
 
 
@@ -62,7 +62,7 @@ describe('LanguageDetector', () => {
 
 describe('LanguageDetector constructor options', () => {
     
-    test(`should return more languages (dataset nor merged)`, () => {
+    test(`should return more languages (results not merged)`, () => {
         let detector = new LanguageDetector({});
         const languages = detector.getSupportedLanguages();
 
@@ -74,7 +74,7 @@ describe('LanguageDetector constructor options', () => {
         expect(languages).toContain('bnr');
     });
 
-    test(`should return zhs (dataset nor merged)`, () => {
+    test(`should return zhs (results not merged)`, () => {
         let detector = new LanguageDetector({});
 
         const text = fs.readFileSync(`testdata/zh/short_zhs.txt`, 'utf8');
@@ -82,7 +82,7 @@ describe('LanguageDetector constructor options', () => {
         expect(results[0]).toBe('zhs');
     });
 
-    test(`should return zht (dataset nor merged)`, () => {
+    test(`should return zht (results not merged)`, () => {
         let detector = new LanguageDetector({});
 
         const text = fs.readFileSync(`testdata/zh/short_zht.txt`, 'utf8');

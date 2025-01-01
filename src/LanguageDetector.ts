@@ -26,34 +26,37 @@ export default class LanguageDetector {
     lettersOnly: ['ja', 'th', 'ko', 'zh', 'zhs', 'zht', 'km'],
     // compact languages (languages wit few signs to convey a lot of information)
     compact: ['ja', 'ko', 'zh', 'zhs', 'zht'],
-    // languages which are similiar to another
+    // languages which are similar to another
     similar: [
       ['es', 'ca', 'gl'], // Spanish, Catalan and Galician
       ['id', 'ms'], // Indonesian and Malay 
-      ['no', 'nb'], // Norwegian
-      ['zh', 'ja'], // Chinese and Japanese -- remove later
+      ['no', 'nb'], // Norwegian Bokmål and Norwegian
       ['nl', 'af'], // Dutch and Afrikaans
-      ['tr', 'az']
+      ['tr', 'az'], // Turkish and Azerbaijani
     ]
   };
   private languages: string[] = [];
   private debugOn = false;
+  private skipSimilarOn = true;
   private mergeResults : IArrayKeys = { };
 
   /** 
     Build the dataset for all supported languages
     @param mergeResults -  Merge languages with different alphabets
     @param mergeDatasets - Merge special datasets with a language
+    @param skipSimilar - Skip similar languages (for top result only)
     @param debug - Enable debug mode
   */
   constructor(mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] , 'bn': ['bnr'], 'hi': ['hir'] },  
-    mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'},  
+    mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'}, 
+    skipSimilar : boolean = true, 
     debug : boolean = false) {
     this.debugOn = debug;
     this.mergeResults = mergeResults;
+    this.skipSimilarOn = skipSimilar;
 
     // Merge code dataset
-    if ((stats['code'] && mergeDatasets['code']) && stats[mergeDatasets['code']]) {
+    if ((stats['code'] && mergeDatasets.hasOwnProperty('code')) && stats[mergeDatasets['code']]) {
       const destination = mergeDatasets['code'];
       for (let word of Object.keys(stats['code']['topWords'])) {
         if (! stats[destination]['topWords'][word]) {
@@ -68,7 +71,7 @@ export default class LanguageDetector {
     }
 
     // Merge top words and letters from misc to english
-    if ((stats['misc'] && mergeDatasets['misc']) && stats[mergeDatasets['misc']]) {
+    if ((stats['misc'] && mergeDatasets.hasOwnProperty('misc')) && stats[mergeDatasets['misc']]) {
       const destination = mergeDatasets['misc'];
       for(let word of Object.keys(stats['misc']['topWords'])) {
         if (! stats[destination]['topWords'][word]) {
@@ -142,7 +145,7 @@ export default class LanguageDetector {
       let matchLetterWords = 0;
       let totalWords = 0;
 
-      //TODO: check the content of the dataset to get these attributes intead of hardcoding them
+      //TODO: check the content of the dataset to get these attributes instead of hardcoding them
       const lettersOnly = this.languageInfo.lettersOnly.includes(language);
       const lettersOK = this.languageInfo.letters.includes(language);
 
@@ -282,19 +285,6 @@ export default class LanguageDetector {
     }
 
 
-
-
-    /*scoreWord['zh'] = Math.max(scoreWord['zh'] || 0, scoreWord['zhs'] || 0, scoreWord['zht'] || 0);
-    delete scoreWord['zhs'];
-    delete scoreWord['zht'];
-
-    // Merge languages with multiple alphabets
-    scoreWord['bn'] = Math.max(scoreWord['bn'] || 0, scoreWord['bnr'] || 0);
-    delete scoreWord['bnr'];
-
-    scoreWord['hi'] = Math.max(scoreWord['hi'] || 0, scoreWord['hir'] || 0);
-    delete scoreWord['hir'];*/
-
     return scoreWord;
   }
 
@@ -310,14 +300,16 @@ export default class LanguageDetector {
     let results = Object.keys(scoreWord).filter((language: string) => scoreWord[language] > 0).sort((a: string, b: string) => scoreWord[b] - scoreWord[a]);  // sort from highest score to lowest score
     results = results.filter((language: string) => scoreWord[language] >= minimumRatio * scoreWord[results[0]]); // keep only languages with a minimum ratio to the highest score
 
-    //TODO: make this optional
     // For similar languages, keep the languages with the highest score
-    for(let similar of this.languageInfo.similar) {
-      while (similar.includes(results[0]) && similar.includes(results[1]) && scoreWord[results[2]] > 0) {
-        this.debug(`Similar languages ${results[0]} ${results[1]} => ${results[2]}`);
-        results.splice(1, 1);
+    if (this.skipSimilarOn) {
+      for(let similar of this.languageInfo.similar) {
+        while (similar.includes(results[0]) && similar.includes(results[1]) && scoreWord[results[2]] > 0) {
+          this.debug(`Similar languages ${results[0]} ${results[1]} => ${results[2]}`);
+          results.splice(1, 1);
+        }
       }
     }
+    
 
     return results;
   }
