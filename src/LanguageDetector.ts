@@ -18,13 +18,13 @@ interface IArrayKeys {
 
 export default class LanguageDetector {
   private languageInfo : any = {
-    // no Ascii characters
+    // no ASCII characters
     noASCII: ['ja', 'zh', 'te', 'he', 'ko', 'ml', 'my', 'ne', 'pa', 'ps', 'sa', 'si', 'ta', 'th', 'zhs', 'zht'],
     // languages with special letters
-    letters: ['bg', 'cs', 'el', 'et', 'is', 'ru', 'sr', 'az', 'bn', 'fa', 'fr', 'hu', 'is', 'kk', 'lt', 'lv', 'mk', 'mn', 'pl', 'ro', 'sk', 'sv', 'tr', 'uk', 'vi', 'he', 'ka'], // , 'da', 'de', 'fi', 'fr' - , 'gu', 'hi', 'ar', 'am', 'hy', 'ka', 'km', 'kn', 'ko', 'ml', 'ne', 'ps', 'sa', 'si', 'ta', 'te', 'th', 'ur', 'pt'
+    // letters: ['bg', 'cs', 'el', 'et', 'is', 'ru', 'sr', 'az', 'bn', 'fa', 'fr', 'hu', 'is', 'kk', 'lt', 'lv', 'mk', 'mn', 'pl', 'ro', 'sk', 'sv', 'tr', 'uk', 'vi', 'he', 'ka'], // , 'da', 'de', 'fi', 'fr' - , 'gu', 'hi', 'ar', 'am', 'hy', 'ka', 'km', 'kn', 'ko', 'ml', 'ne', 'ps', 'sa', 'si', 'ta', 'te', 'th', 'ur', 'pt'
     // languages with only characters (no words)
-    lettersOnly: ['ja', 'th', 'ko', 'zh', 'zhs', 'zht', 'km'],
-    // compact languages (languages wit few signs to convey a lot of information)
+    // lettersOnly: ['ja', 'th', 'ko', 'zh', 'zhs', 'zht', 'km'],
+    // compact languages (languages with few signs to convey a lot of information)
     compact: ['ja', 'ko', 'zh', 'zhs', 'zht'],
     // languages which are similar to another
     similar: [
@@ -70,7 +70,7 @@ export default class LanguageDetector {
       delete stats['code'];
     }
 
-    // Merge top words and letters from misc to english
+    // Merge misc dataset
     if ((stats['misc'] && mergeDatasets.hasOwnProperty('misc')) && stats[mergeDatasets['misc']]) {
       const destination = mergeDatasets['misc'];
       for(let word of Object.keys(stats['misc']['topWords'])) {
@@ -134,20 +134,25 @@ export default class LanguageDetector {
     rawText = '';
 
     const maxOccurences = 2;
+    const topLettersRatioMinimum = 200
 
     for(const language of this.languages) {      
       scoreWord[language] = 0;     // initialize score for words
       let matchWords : IObjectKeys = {};  // keep track of words seen 
       let scoreLetter = 0;        // initialize score for letters
-      let scoreWordsLetters = 0;  // initialie score for words thst include a special letter
+      let scoreWordsLetters = 0;  // initialize score for words thst include a special letter
       let totalLetters = 0;
       let matchLetters = 0;
       let matchLetterWords = 0;
       let totalWords = 0;
 
+      const topLettersRatio = stats[language]['topLettersTotal'];
+
       //TODO: check the content of the dataset to get these attributes instead of hardcoding them
-      const lettersOnly = this.languageInfo.lettersOnly.includes(language);
-      const lettersOK = this.languageInfo.letters.includes(language);
+      // const lettersOK = this.languageInfo.letters.includes(language);
+      const lettersOK = topLettersRatio >= topLettersRatioMinimum;
+      // const lettersOnly = this.languageInfo.lettersOnly.includes(language);
+      const lettersOnly = lettersOK && Object.keys(stats[language]["topWords"] || {}).length == 0;
 
       for(let word of words) {
 
@@ -162,9 +167,8 @@ export default class LanguageDetector {
           }
         }
 
-
         let match = false; // used to check if the word is in the top words
-        const topLettersRatio = stats[language]['topLettersTotal'];
+        
         
 
         if (lettersOK || lettersOnly) {
@@ -179,7 +183,7 @@ export default class LanguageDetector {
         }
 
         //TODO: move check on topLettersRatio to letterOK
-        if (lettersOK && !match && topLettersRatio >= 200) { // add condition used in formula
+        if (lettersOK && !match) { // add condition used in formula
           // Use the word stripped of ASCII characters for languages taht don't use ASCII
           if (this.languageInfo.noASCII.includes(language)) {
             let asciiWord = this.noASCII(word);
@@ -242,8 +246,7 @@ export default class LanguageDetector {
 
       const lettersComputeOK = (totalWords / matchLetterWords < 10) && (scoreWord[language] > 0); // at least one word matches 
 
-      if (lettersOK && (expected >= 200 || lettersComputeOK)) { // minimum ratio expected to be useful
-
+      if (lettersOK && lettersComputeOK) {
         if (seen < expected * 0.2 && totalWords / matchLetterWords > 10) { // low ratio: penalty
           const penalty = expected * totalLetters / 1000;
           scoreWord[language] -= penalty;
