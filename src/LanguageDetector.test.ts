@@ -1,6 +1,6 @@
 import {describe, expect, test,  beforeEach} from '@jest/globals';
 import LanguageDetector from './LanguageDetector';
-const fs = require('fs');
+import fs from 'fs';
 
 
 describe('LanguageDetector', () => {
@@ -13,6 +13,13 @@ describe('LanguageDetector', () => {
     test('should support many languages', () => {
       const languages = detector.getSupportedLanguages();
       expect(languages.length).toBeGreaterThan(0);
+
+      expect(languages).not.toContain('zhs');
+      expect(languages).not.toContain('zht');
+      expect(languages).toContain('zh');
+
+      expect(languages).toContain('bn');
+        expect(languages).not.toContain('bnr');
     });
 
 
@@ -24,10 +31,16 @@ describe('LanguageDetector', () => {
         .map((dirent : any) => dirent.name)
 
     folders.forEach((language : string) => {
-        test(`should detect ${language} language`, () => {
-            const text = fs.readFileSync(`${path}/${language}/short.txt`, 'utf8');
-            const results = detector.getLanguages(text);
-            expect(results[0]).toBe(language);
+        const files = fs.readdirSync(`${path}/${language}`, { withFileTypes: true })
+            .filter((dirent : any) => dirent.isFile())
+            .map((dirent : any) => dirent.name)
+
+        files.forEach((file : string) => {
+            test(`should detect ${language} language (${file})`, () => {
+                const text = fs.readFileSync(`${path}/${language}/${file}`, 'utf8');
+                const results = detector.getLanguages(text);
+                expect(results[0]).toBe(language);
+            });
         });
     });
 
@@ -42,5 +55,38 @@ describe('LanguageDetector', () => {
         const text = ' 1 222 !@#';
         const results = detector.getLanguages(text);
         expect(results.length).toBe(0);
+    });
+
+});
+
+
+describe('LanguageDetector constructor options', () => {
+    
+    test(`should return more languages (dataset nor merged)`, () => {
+        let detector = new LanguageDetector({});
+        const languages = detector.getSupportedLanguages();
+
+        expect(languages).toContain('zhs');
+        expect(languages).toContain('zht');
+        expect(languages).not.toContain('zh');
+
+        expect(languages).toContain('bn');
+        expect(languages).toContain('bnr');
+    });
+
+    test(`should return zhs (dataset nor merged)`, () => {
+        let detector = new LanguageDetector({});
+
+        const text = fs.readFileSync(`testdata/zh/short_zhs.txt`, 'utf8');
+        const results = detector.getLanguages(text);
+        expect(results[0]).toBe('zhs');
+    });
+
+    test(`should return zht (dataset nor merged)`, () => {
+        let detector = new LanguageDetector({});
+
+        const text = fs.readFileSync(`testdata/zh/short_zht.txt`, 'utf8');
+        const results = detector.getLanguages(text);
+        expect(results[0]).toBe('zht');
     });
 });

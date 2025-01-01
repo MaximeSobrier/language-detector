@@ -42,10 +42,11 @@ export default class LanguageDetector {
 
   /** 
     Build the dataset for all supported languages
-
+    @param mergeResults -  Merge languages with different alphabets
+    @param mergeDatasets - Merge special datasets with a language
     @param debug - Enable debug mode
   */
-  constructor(mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] ,  },  
+  constructor(mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] , 'bn': ['bnr'], 'hi': ['hir'] },  
     mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'},  
     debug : boolean = false) {
     this.debugOn = debug;
@@ -269,8 +270,21 @@ export default class LanguageDetector {
       }
     }
 
-    // Merge simplified and traditional chinese
-    scoreWord['zh'] = Math.max(scoreWord['zh'] || 0, scoreWord['zhs'] || 0, scoreWord['zht'] || 0);
+    // Merge languages with multiple alphabets
+    for (const destination of Object.keys(this.mergeResults)) { // 'zh': ['zhs', 'zht']
+      const merged = this.mergeResults[destination];
+      scoreWord[destination] = 0;
+
+      for (const source of merged) {
+        scoreWord[destination] = Math.max(scoreWord[destination], scoreWord[source]);
+        delete scoreWord[source];
+      }
+    }
+
+
+
+
+    /*scoreWord['zh'] = Math.max(scoreWord['zh'] || 0, scoreWord['zhs'] || 0, scoreWord['zht'] || 0);
     delete scoreWord['zhs'];
     delete scoreWord['zht'];
 
@@ -279,7 +293,7 @@ export default class LanguageDetector {
     delete scoreWord['bnr'];
 
     scoreWord['hi'] = Math.max(scoreWord['hi'] || 0, scoreWord['hir'] || 0);
-    delete scoreWord['hir'];
+    delete scoreWord['hir'];*/
 
     return scoreWord;
   }
