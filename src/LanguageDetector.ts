@@ -16,6 +16,7 @@ interface IArrayKeys {
   [key: string]: string[];
 }
 
+
 export default class LanguageDetector {
   private languageInfo : any = {
     // no ASCII characters

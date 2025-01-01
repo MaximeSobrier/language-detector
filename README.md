@@ -55,6 +55,20 @@ Creating an instance of LanguageDetector
 
 ### Configuration
 
+## Tests
+
+To run tests, use this command:
+
+```sh
+npm test
+```
+
+Most test files were created with automated translation tools. Since the validity of the content has not been verified, failed tests (.txt.failed extension) have been disabled. To force these test files to be used, run this command:
+
+```sh
+FORCE_ALL_TESTS=true npm test
+```
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.

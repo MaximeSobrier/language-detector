@@ -4,5 +4,6 @@ module.exports = {
   transform: {
     "^.+.tsx?$": ["ts-jest",{}],
   },
+  testMatch: [ "**/src/**/?(*.)+(spec|test).[jt]s?(x)" ],
   preset: "ts-jest"
 };
