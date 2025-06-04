@@ -7,7 +7,7 @@ import fs from 'fs';
 describe('LanguageDetector constructor options', () => {
 
   test(`should return more languages (dataset not merged)`, () => {
-      const detector = new LanguageDetector(undefined, {});
+      const detector = new LanguageDetector(undefined, undefined, {});
       const languages = detector.getSupportedLanguages();
 
       expect(languages).toContain('code');
@@ -15,7 +15,7 @@ describe('LanguageDetector constructor options', () => {
   });
 
   test(`should return more languages (dataset not merged)`, () => {
-    const detector = new LanguageDetector(undefined, {'code': 'en'});
+    const detector = new LanguageDetector(undefined, undefined, {'code': 'en'});
     const languages = detector.getSupportedLanguages();
 
     expect(languages).not.toContain('code');

@@ -1,6 +1,8 @@
 # Efficient Language Detection for Multilingual Documents
 
-`LanguageDetector` is a TypeScript class designed to detect languages for web pages in 102 and languages. A research paper with more information will be published soon.
+`LanguageDetector` is a TypeScript library designed to detect languages for web pages in 102 and languages. A research paper with more information will be published soon.
+
+This library has no dependency. It's been tested on the server-side with nodejs. It should work in the browser.
 
 ## Example
 
@@ -65,10 +67,11 @@ Scores can be 0 or negative. This library was designed and tested with the visib
 
 ### getLanguages(rawText, minimumRatio?)
 
-Returns the most likely language(s) used in the page
+Returns the most likely language(s) used in the page from highest score to lowest score.
 
+* ```minimumRatio```: minimum ratio to the highest score to be included, 0.0 to 1.0 - 0.8 by default
 
-### Example
+If the language with highest score has value of 100, only languages with a score of 80 (0.8 ratio) or more returned.
 
 
 ### Configuration

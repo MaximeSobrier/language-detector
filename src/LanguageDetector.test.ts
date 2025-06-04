@@ -73,7 +73,7 @@ describe('LanguageDetector', () => {
 describe('LanguageDetector constructor options', () => {
     
     test(`should return more languages (results not merged)`, () => {
-        let detector = new LanguageDetector({});
+        let detector = new LanguageDetector(undefined, {});
         const languages = detector.getSupportedLanguages();
 
         expect(languages).toContain('zhs');
@@ -85,7 +85,7 @@ describe('LanguageDetector constructor options', () => {
     });
 
     test(`should return zhs (results not merged)`, () => {
-        let detector = new LanguageDetector({});
+        let detector = new LanguageDetector(undefined, {});
 
         const text = fs.readFileSync(`testdata/zh/short_zhs.txt`, 'utf8');
         const results = detector.getLanguages(text);
@@ -93,7 +93,7 @@ describe('LanguageDetector constructor options', () => {
     });
 
     test(`should return zht (results not merged)`, () => {
-        let detector = new LanguageDetector({});
+        let detector = new LanguageDetector(undefined, {});
 
         const text = fs.readFileSync(`testdata/zh/short_zht.txt`, 'utf8');
         const results = detector.getLanguages(text);

@@ -7,7 +7,7 @@ import fs from 'fs';
 describe('LanguageDetector constructor options', () => {
 
   test(`should return more languages (dataset not merged)`, () => {
-    const detector = new LanguageDetector(undefined, {'misc': 'en'});
+    const detector = new LanguageDetector(undefined, undefined, {'misc': 'en'});
     const languages = detector.getSupportedLanguages();
 
     expect(languages).toContain('code');
