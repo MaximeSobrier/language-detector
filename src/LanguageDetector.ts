@@ -284,7 +284,7 @@ export default class LanguageDetector {
           scoreWord[language] -= penalty;
           this.debug(`Letter penalty for ${language}: ${penalty} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
         }
-        else if (seen >= expected * 0.5) { // high ratio: bonus
+        else if (seen >= expected * 0.2) { // high ratio: bonus - 0.5
           // let bonus = scoreWordsLetters  * matchLetters / totalLetters;// add letters to words, original
           // let bonus = (scoreWordsLetters / totalWords) * matchLetters / totalLetters; // add letters to words, use ratio of words
           let bonus = (matchLetterWords / totalWords) * (matchLetters / totalLetters) * Math.max(scoreWord[language], 10) * 2;
@@ -301,6 +301,7 @@ export default class LanguageDetector {
         this.debug(`Language ${language} scoreLetter: ${scoreWord[language]} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
 
         const bonus = expected * totalLetters / 1000 * (scoreLetter / matchLetters);
+        this.debug(`Language ${language} potential bonus: ${bonus} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
 
         if (seen >= expected * 0.5 || (matchLetters >= totalWords / 2 && this.languageInfo.compact.includes(language))) { // high ratio: bonus
           this.debug(`Letter max bonus for ${language}: ${bonus} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
