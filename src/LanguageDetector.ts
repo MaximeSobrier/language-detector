@@ -16,6 +16,7 @@ interface IArrayKeys {
   [key: string]: string[];
 }
 
+const minChars = 2;
 
 export default class LanguageDetector {
   private languageInfo : any = {
@@ -35,6 +36,24 @@ export default class LanguageDetector {
       ['nl', 'af'], // Dutch and Afrikaans
       ['tr', 'az'], // Turkish and Azerbaijani
       ['he', 'yi'], // Hebrew and Yiddish
+      ['bs', 'hr', 'sl'], // Bosnian, Croatian, Slovenian
+      ['sr', 'mk', 'bg'], // Serbian, Macedonian, Bulgarian
+      ['pl', 'ln'], // Polish and Lingala
+      ['uk', 'bg'], // Ukrainian and Bulgarian
+      ['ru', 'uk', 'be'], // Russian and Ukrainian
+      ['ru', 'bg'], // Russian, Bulgarian, Belarusian
+      ['be', 'bg'], // Belarusian and Bulgarian
+      ['sk', 'ln'], // Slovak and Lingala
+      ['cs', 'sk'], // Czech and Slovak
+      ['mk', 'bg'], // Macedonian and Bulgarian
+      ['li', 'af'], // Limburgish and Afrikaans
+      ['xh', 'zu'], // Xhosa and Zulu
+      ['ky', 'kk'], // Kyrgyz and Kazakh
+      ['ku', 'ln'], // Kurdish and Lingala
+      ['pt', 'gl'], // Portuguese and Galician
+      ['az', 'ln'], // Azerbaijani and Lingala
+      ['so', 'eo'], // Somali and Esperanto
+      ['hr', 'sr'], // Croatian and Serbian
     ]
   };
   private languages : string[] = [];
@@ -157,22 +176,21 @@ export default class LanguageDetector {
       .filter((word) => word.length >= 2 || !word.match(/[a-zA-Z]/)) // Keep single letters for chinese
       .slice(0, 2048);
 
-
     rawText = '';
 
-    const maxOccurences = 2;
-    const topLettersRatioMinimum = 200;
+    const maxOccurences = 2; // change
+    const topLettersRatioMinimum = 200; // change
 
     for(const language of this.languages) {      
       scoreWord[language] = 0;     // initialize score for words
       let matchWords : IObjectKeys = {};  // keep track of words seen 
       let scoreLetter = 0;        // initialize score for letters
-      let scoreWordsLetters = 0;  // initialize score for words thst include a special letter
+      let scoreWordsLetters = 0;  // initialize score for words that include a special letter
       let totalLetters = 0;
       let matchLetters = 0;
       let matchLetterWords = 0;
       let totalWords = 0;
-      let noASCII =  stats[language].noASCII || false;;
+      let totalMatchWords = 0;
 
       const topLettersRatio = stats[language]['topLettersTotal'];
 
@@ -182,6 +200,14 @@ export default class LanguageDetector {
       this.debug(`Language ${language} lettersOK: ${lettersOK}, lettersOnly: ${lettersOnly}, topLettersRatio: ${topLettersRatio}`);
 
       for(let word of words) {
+
+        if (stats[language]['topWords'].hasOwnProperty(word)) {
+          totalMatchWords++;
+        }
+
+        if (lettersOK || lettersOnly) {
+          totalLetters += word.length; // used only with letters
+        }
 
         if (! (word in matchWords)) {
           matchWords[word] = 0;
@@ -195,37 +221,19 @@ export default class LanguageDetector {
         }
 
         let match = false; // used to check if the word is in the top words
-        
-        
 
-        if (lettersOK || lettersOnly) {
-          totalLetters += word.length; // used only with letters
-        }
 
-        if (!lettersOnly && word.length >= 2) {
+        if (!lettersOnly && word.length >= minChars) {
           if (stats[language]['topWords'].hasOwnProperty(word)) { 
             match = true;
             scoreWord[language] = scoreWord[language] + stats[language]['topWords'][word] * Math.pow(word.length - 1, 2);
+            this.debug(`Word ${word} found in topWords for ${language} with score ${stats[language]['topWords'][word]} (total score: ${scoreWord[language]})`);
           }
         }
 
         //TODO: move check on topLettersRatio to letterOK
-        if (!lettersOnly && lettersOK && !match) { // add condition used in formula
+        if (!lettersOnly && lettersOK /* && !match */) { // add condition used in formula
           // Use the word stripped of ASCII characters for languages that don't use ASCII
-          if (noASCII) {
-            let asciiWord = this.noASCII(word);
-            word = asciiWord;
-
-            if (asciiWord != word && word.length >= 1) {
-          
-              if (! (asciiWord in matchWords)) {
-                matchWords[asciiWord] = 0;
-              }
-              else {
-                matchWords[asciiWord] = matchWords[asciiWord] + 1;
-              }
-            }
-          }
 
           totalWords++;
 
@@ -238,6 +246,8 @@ export default class LanguageDetector {
             if (value && value > 0) {
               score = Math.max(value, score); // only keep the most relevant letter
               matchLetters++;
+
+              scoreLetter += value;
             }
           }
           
@@ -249,10 +259,6 @@ export default class LanguageDetector {
 
         if (lettersOnly) {
           totalWords++;
-          if (noASCII) {
-            let asciiWord = this.noASCII(word);
-            word = asciiWord;
-          }
 
           for (const letter of word) {
             const value = stats[language]['topLetters'][letter];
@@ -267,6 +273,12 @@ export default class LanguageDetector {
         }
       }
 
+      this.debug(`Language ${language} initial scoreWord: ${scoreWord[language]} - totalWordScore: ${stats[language]['topLetters']['totalWordScore']}`);
+      scoreWord[language] = scoreWord[language] * Math.pow(totalMatchWords, 2) / words.length; // normalize by the number of words matched
+      // scoreWord[language] = scoreWord[language] * totalMatchWords / words.length; // normalize by the number of words matched
+
+      this.debug(`Language ${language} scoreWord: ${scoreWord[language]}`);
+
       // Formula
       if (!lettersOK && !lettersOnly)
         continue;
@@ -276,49 +288,33 @@ export default class LanguageDetector {
 
       const lettersComputeOK = (totalWords / matchLetterWords < 10) && (scoreWord[language] > 0); // at least one word matches 
 
-      this.debug(`Language ${language} scoreWord: ${scoreWord[language]}`);
-
       if (!lettersOnly && lettersOK && lettersComputeOK) {
-        if (seen < expected * 0.2 && totalWords / matchLetterWords > 10) { // low ratio: penalty
-          const penalty = expected * totalLetters / 1000;
-          scoreWord[language] -= penalty;
-          this.debug(`Letter penalty for ${language}: ${penalty} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
-        }
-        else if (seen >= expected * 0.2) { // high ratio: bonus - 0.5
-          // let bonus = scoreWordsLetters  * matchLetters / totalLetters;// add letters to words, original
-          // let bonus = (scoreWordsLetters / totalWords) * matchLetters / totalLetters; // add letters to words, use ratio of words
-          let bonus = (matchLetterWords / totalWords) * (matchLetters / totalLetters) * Math.max(scoreWord[language], 10) * 2;
-          scoreWord[language] += bonus;
-          this.debug(`Letter bonus for ${language}: ${bonus} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords}, scoreWordsLetters: ${scoreWordsLetters}, matchLetters: ${matchLetters}, totalLetters: ${totalLetters})`);
-        }
-        else {
-          this.debug(`No letter penalty/bonus for ${language} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
-        }
+        const bonus = (matchLetterWords / totalWords) * (matchLetters / totalLetters) * Math.max(scoreWord[language], 10) * matchLetterWords * seen / expected * 10 * 0.5;
+        // const bonus = (matchLetterWords / totalWords) * (matchLetters / totalLetters) * matchLetterWords * seen / expected * 10 * 0.5;
+
+        scoreWord[language] += bonus;
+        this.debug(`Letter bonus for ${language}: ${bonus} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords}, scoreWordsLetters: ${scoreWordsLetters}, matchLetters: ${matchLetters}, totalLetters: ${totalLetters})`);
       }
 
       if (lettersOnly) {
-        scoreWord[language] = scoreLetter / totalLetters * 1000; // only letters
+        // scoreWord[language] = scoreLetter / totalLetters * 1000; // only letters
+        scoreWord[language] = scoreLetter * matchLetters / totalLetters * 100; // only letters
         this.debug(`Language ${language} scoreLetter: ${scoreWord[language]} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
 
-        const bonus = expected * totalLetters / 1000 * (scoreLetter / matchLetters);
-        this.debug(`Language ${language} potential bonus: ${bonus} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
+        if (this.languageInfo.compact.includes(language)) {
+          scoreWord[language] *= 1.2;
+        }
 
-        if (seen >= expected * 0.5 || (matchLetters >= totalWords / 2 && this.languageInfo.compact.includes(language))) { // high ratio: bonus
-          this.debug(`Letter max bonus for ${language}: ${bonus} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
-          scoreWord[language] += bonus;
-        }
-        else if (seen >= expected * 0.3) { // Mix of chinese and english
-          scoreWord[language] += bonus/2;
-          this.debug(`Letter mix bonus for ${language}: ${bonus/2} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
-        }
-        else if (seen >= expected * 0.2) { // Mix of chinese and english
-          scoreWord[language] += bonus/4;
-          this.debug(`Letter mix bonus for ${language}: ${bonus/4} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
-        }
-        else if (seen < expected * 0.2) {
-          scoreWord[language] -= bonus;
-          this.debug(`Letter penalty for ${language}: ${bonus} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
-        } 
+        // let bonus = expected * totalLetters / 1000 * (scoreLetter / matchLetters) * seen / expected * 10; // original
+        // let bonus = matchLetters / 1000 * (scoreLetter / totalLetters) * seen / expected * 10;
+        // this.debug(`Language ${language} bonus: ${bonus} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
+
+        // if (this.languageInfo.compact.includes(language)) {
+        //   bonus = bonus * 4;
+        //   this.debug(`Language ${language} compact bonus: ${bonus} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
+        // }
+
+        // scoreWord[language] += bonus;
       }
 
       this.debug(`Language ${language} score: ${scoreWord[language]} (seen: ${seen}, expected: ${expected}, totalLetters: ${totalLetters}, matchLetters: ${matchLetters}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
@@ -344,7 +340,7 @@ export default class LanguageDetector {
         }
         this.debug(`Merging ${source} into ${destination} with score ${scoreWord[source]}`);
 
-        scoreWord[destination] = Math.max(scoreWord[destination], scoreWord[source]);
+        scoreWord[destination] += scoreWord[source];
         
         if (source != destination)
           delete scoreWord[source];
@@ -370,19 +366,18 @@ export default class LanguageDetector {
     // For similar languages, keep the languages with the highest score
     if (this.skipSimilarOn) {
       for(let similar of this.languageInfo.similar) {
-        while (similar.includes(results[0]) && similar.includes(results[1]) && scoreWord[results[2]] > 0) {
-          this.debug(`Similar languages ${results[0]} ${results[1]} => ${results[2]}`);
-          results.splice(1, 1);
+        let common = results.filter((language: string) => similar.includes(language));
+        if (common.length > 1) {
+          // Keep the language with the highest score
+          const best = common.reduce((a: string, b: string) => scoreWord[a] > scoreWord[b] ? a : b);
+          results = results.filter((language: string) => !common.includes(language) || language === best);
+          this.debug(`Keeping ${best} from similar languages ${common.join(', ')} with score ${scoreWord[best]}`);
         }
       }
     }
     
 
     return results;
-  }
-
-  private noASCII(word : string = '') : string {
-    return word.replace(/[!-~]/g, '');
   }
 
   private debug(message : string = '') {
