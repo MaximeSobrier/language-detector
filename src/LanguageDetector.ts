@@ -54,6 +54,7 @@ export default class LanguageDetector {
       ['az', 'ln'], // Azerbaijani and Lingala
       ['so', 'eo'], // Somali and Esperanto
       ['hr', 'sr'], // Croatian and Serbian
+      ['zh', 'ja'], // Chinese and Japanese
     ]
   };
   private languages : string[] = [];
@@ -179,33 +180,21 @@ export default class LanguageDetector {
     rawText = '';
 
     const maxOccurences = 2; // change
-    const topLettersRatioMinimum = 200; // change
 
     for(const language of this.languages) {      
       scoreWord[language] = 0;     // initialize score for words
       let matchWords : IObjectKeys = {};  // keep track of words seen 
       let scoreLetter = 0;        // initialize score for letters
-      let scoreWordsLetters = 0;  // initialize score for words that include a special letter
       let totalLetters = 0;
       let matchLetters = 0;
-      let matchLetterWords = 0;
-      let totalWords = 0;
       let totalMatchWords = 0;
 
-      const topLettersRatio = stats[language]['topLettersTotal'];
+      const lettersOnly = Object.keys(stats[language]["topWords"] || {}).length == 0;
 
-      const lettersOK = topLettersRatio >= topLettersRatioMinimum;
-      const lettersOnly = lettersOK && Object.keys(stats[language]["topWords"] || {}).length == 0;
-
-      this.debug(`Language ${language} lettersOK: ${lettersOK}, lettersOnly: ${lettersOnly}, topLettersRatio: ${topLettersRatio}`);
+      this.debug(`Language ${language}, lettersOnly: ${lettersOnly}`);
 
       for(let word of words) {
-
-        if (stats[language]['topWords'].hasOwnProperty(word)) {
-          totalMatchWords++;
-        }
-
-        if (lettersOK || lettersOnly) {
+        if (lettersOnly) {
           totalLetters += word.length; // used only with letters
         }
 
@@ -220,104 +209,47 @@ export default class LanguageDetector {
           }
         }
 
-        let match = false; // used to check if the word is in the top words
-
 
         if (!lettersOnly && word.length >= minChars) {
           if (stats[language]['topWords'].hasOwnProperty(word)) { 
-            match = true;
-            scoreWord[language] = scoreWord[language] + stats[language]['topWords'][word] * Math.pow(word.length - 1, 2);
-            this.debug(`Word ${word} found in topWords for ${language} with score ${stats[language]['topWords'][word]} (total score: ${scoreWord[language]})`);
-          }
-        }
-
-        //TODO: move check on topLettersRatio to letterOK
-        if (!lettersOnly && lettersOK /* && !match */) { // add condition used in formula
-          // Use the word stripped of ASCII characters for languages that don't use ASCII
-
-          totalWords++;
-
-          let score = 0;
-          
-          // Check if the word contains a special letter
-          for (const letter of word) {
-            const value = stats[language]['topLetters'][letter];
-            // this.debug(`Letter ${letter} value: ${value} for word ${word} in language ${language}`);
-            if (value && value > 0) {
-              score = Math.max(value, score); // only keep the most relevant letter
-              matchLetters++;
-
-              scoreLetter += value;
-            }
-          }
-          
-          if (score > 0) {
-            scoreWordsLetters += score * Math.pow(Math.min(4, word.length - 1), 2);
-            matchLetterWords++;
+            let value = stats[language]['topWords'][word];
+            totalMatchWords++;
+            scoreWord[language] = scoreWord[language] + value * Math.pow(word.length - 1, 2);
+            this.debug(`Word ${word} found in topWords for ${language} with score ${value} (total score: ${scoreWord[language]})`);
           }
         }
 
         if (lettersOnly) {
-          totalWords++;
-
           for (const letter of word) {
             const value = stats[language]['topLetters'][letter];
             if (value && value > 0) {
-              scoreLetter += value;
-
-              this.debug(`Letter ${letter} value: ${value} for word ${word} in language ${language}`);
-
               matchLetters++;
+
+              scoreLetter += value;
             }
           }
         }
       }
 
-      this.debug(`Language ${language} initial scoreWord: ${scoreWord[language]} - totalWordScore: ${stats[language]['topLetters']['totalWordScore']}`);
+      this.debug(`Language ${language} initial scoreWord: ${scoreWord[language]}`);
       scoreWord[language] = scoreWord[language] * Math.pow(totalMatchWords, 2) / words.length; // normalize by the number of words matched
-      // scoreWord[language] = scoreWord[language] * totalMatchWords / words.length; // normalize by the number of words matched
 
       this.debug(`Language ${language} scoreWord: ${scoreWord[language]}`);
 
       // Formula
-      if (!lettersOK && !lettersOnly)
+      if (!lettersOnly)
         continue;
 
-      const expected = stats[language]['topLettersTotal'];
-      const seen = matchLetters / totalLetters * 1000; // ratio of special letters
-
-      const lettersComputeOK = (totalWords / matchLetterWords < 10) && (scoreWord[language] > 0); // at least one word matches 
-
-      if (!lettersOnly && lettersOK && lettersComputeOK) {
-        const bonus = (matchLetterWords / totalWords) * (matchLetters / totalLetters) * Math.max(scoreWord[language], 10) * matchLetterWords * seen / expected * 10 * 0.5;
-        // const bonus = (matchLetterWords / totalWords) * (matchLetters / totalLetters) * matchLetterWords * seen / expected * 10 * 0.5;
-
-        scoreWord[language] += bonus;
-        this.debug(`Letter bonus for ${language}: ${bonus} (seen: ${seen}, expected: ${expected}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords}, scoreWordsLetters: ${scoreWordsLetters}, matchLetters: ${matchLetters}, totalLetters: ${totalLetters})`);
-      }
-
       if (lettersOnly) {
-        // scoreWord[language] = scoreLetter / totalLetters * 1000; // only letters
         scoreWord[language] = scoreLetter * matchLetters / totalLetters * 100; // only letters
         this.debug(`Language ${language} scoreLetter: ${scoreWord[language]} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
 
         if (this.languageInfo.compact.includes(language)) {
           scoreWord[language] *= 1.2;
         }
-
-        // let bonus = expected * totalLetters / 1000 * (scoreLetter / matchLetters) * seen / expected * 10; // original
-        // let bonus = matchLetters / 1000 * (scoreLetter / totalLetters) * seen / expected * 10;
-        // this.debug(`Language ${language} bonus: ${bonus} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
-
-        // if (this.languageInfo.compact.includes(language)) {
-        //   bonus = bonus * 4;
-        //   this.debug(`Language ${language} compact bonus: ${bonus} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
-        // }
-
-        // scoreWord[language] += bonus;
       }
 
-      this.debug(`Language ${language} score: ${scoreWord[language]} (seen: ${seen}, expected: ${expected}, totalLetters: ${totalLetters}, matchLetters: ${matchLetters}, totalWords: ${totalWords}, matchLetterWords: ${matchLetterWords})`);
+      this.debug(`Language ${language} score: ${scoreWord[language]} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters}})`);
     }
 
     // Merge languages with multiple alphabets
