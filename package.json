@@ -1,6 +1,6 @@
 {
   "name": "language-detector-web",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Efficient Language Detection for Multilingual Documents",
   "main": "dist/LanguageDetector.js",
   "types": "dist/LanguageDetector.d.ts",
@@ -16,7 +16,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "jest",
+    "test": "cp datasets/languages.stats.10k.compact.json src/languages.json && jest",
     "build": "node_modules/typescript/bin/tsc && cp datasets/languages.stats.10k.compact.json dist/languages.json"
   },
   "author": "Maxime Sobrier",

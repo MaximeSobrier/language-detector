@@ -1,4 +1,4 @@
-import {describe, expect, test,  beforeEach, afterEach} from '@jest/globals';
+import {describe, expect, test,  beforeEach} from '@jest/globals';
 import LanguageDetector from './LanguageDetector';
 import fs from 'fs';
 import { env } from 'process';

@@ -20,13 +20,6 @@ const minChars = 2;
 
 export default class LanguageDetector {
   private languageInfo : any = {
-    // no ASCII characters
-    // noASCII: ['ja', 'zh', 'te', 'he', 'ko', 'ml', 'my', 'ne', 'pa', 'ps', 'sa', 'si', 'ta', 'th', 'zhs', 'zht', 'yi'],
-    // languages with special letters
-    // letters: ['bg', 'cs', 'el', 'et', 'is', 'ru', 'sr', 'az', 'bn', 'fa', 'fr', 'hu', 'is', 'kk', 'lt', 'lv', 'mk', 'mn', 'pl', 'ro', 'sk', 'sv', 'tr', 'uk', 'vi', 'he', 'ka'], // , 'da', 'de', 'fi', 'fr' - , 'gu', 'hi', 'ar', 'am', 'hy', 'ka', 'km', 'kn', 'ko', 'ml', 'ne', 'ps', 'sa', 'si', 'ta', 'te', 'th', 'ur', 'pt'
-    // languages with only characters (no words)
-    // lettersOnly: ['ja', 'th', 'ko', 'zh', 'zhs', 'zht', 'km'],
-    // compact languages (languages with few signs to convey a lot of information)
     compact: ['ja', 'ko', 'zh', 'zhs', 'zht'],
     // languages which are similar to another
     similar: [
@@ -61,6 +54,7 @@ export default class LanguageDetector {
   private debugOn = false;
   private skipSimilarOn = false;
   private mergeResults : IArrayKeys = { };
+  private mergeDatasets : IStringKeys = {  };
 
   /** 
     Build the dataset for all supported languages
@@ -80,38 +74,12 @@ export default class LanguageDetector {
     this.debugOn = debug;
     this.mergeResults = mergeResults;
     this.skipSimilarOn = skipSimilar;
+    this.mergeDatasets = mergeDatasets;
 
-    // Merge code dataset
-    if ((stats['code'] && mergeDatasets.hasOwnProperty('code')) && stats[mergeDatasets['code']]) {
-      const destination = mergeDatasets['code'];
-      for (let word of Object.keys(stats['code']['topWords'])) {
-        if (! stats[destination]['topWords'][word]) {
-          stats[destination]['topWords'][word] = stats['code']['topWords'][word] / 2;
-        }
-        else {
-          stats[destination]['topWords'][word] += stats['code']['topWords'][word] / 2;
-        }
-      }
+    const allLanguages : string[] = stats['__languages__'];
+    // console.log(allLanguages);
 
-      delete stats['code'];
-    }
-
-    // Merge misc dataset
-    if ((stats['misc'] && mergeDatasets.hasOwnProperty('misc')) && stats[mergeDatasets['misc']]) {
-      const destination = mergeDatasets['misc'];
-      for(let word of Object.keys(stats['misc']['topWords'])) {
-        if (! stats[destination]['topWords'][word]) {
-          stats[destination]['topWords'][word] = stats['misc']['topWords'][word] / 10;
-        }
-        else {
-          stats[destination]['topWords'][word] += stats['misc']['topWords'][word] / 10;
-        }
-      }
-
-      delete stats['misc'];
-    }
-
-    if (languages.length > 0) {
+    if (languages && languages.length > 0) {
       // Expand with merged languages
       Object.keys(this.mergeResults).forEach((destination: string) => {
         if (languages.includes(destination)) {
@@ -124,12 +92,12 @@ export default class LanguageDetector {
       });
 
       // Filter languages
-      this.languages = languages.filter((language: string) => stats.hasOwnProperty(language));
+      this.languages = languages.filter((language: string) => allLanguages.includes(language));
 
     }
     else {
       // Get all languages from stats
-      this.languages = Object.keys(stats);
+      this.languages = allLanguages;
     }
   }
 
@@ -143,10 +111,21 @@ export default class LanguageDetector {
     let remove : string[] = []
 
     for (const destination of Object.keys(this.mergeResults)) { // 'zh': ['zhs', 'zht']
-      const merged = this.mergeResults[destination].filter((language: string) => language != destination);
+      const merged = this.mergeResults[destination].filter((language: string) => language != destination) || [];
       remove = remove.concat(merged);
 
       if (!this.languages.includes(destination)) {
+        add.push(destination);
+      }
+    }
+
+    for(let source of Object.keys(this.mergeDatasets)) { // 'code': 'en'
+      if (this.languages.includes(source) && !remove.includes(source)) {
+        remove.push(source);
+      }
+
+      let destination = this.mergeDatasets[source];
+      if (!this.languages.includes(destination) && !add.includes(destination)) {
         add.push(destination);
       }
     }
@@ -160,8 +139,6 @@ export default class LanguageDetector {
     @returns <language>: <score> key pairs
   */
   getLanguagesWithScores(rawText: string = '') : IObjectKeys {
-    let scoreWord : IObjectKeys = {};
-    
     const words = rawText.replace(/-+|[’'´‘]|[\/,&•‎…\-±…»·\–¶±·\– ³¯\—›；；《》〔〕\(\)．–¿\u200B\u2588\u2000-\u2BFF\u2E00-\u2E7F\uE000-\uF8FF\uFE00-\uFE2F\uFF00-\uFFFF]/gi, ' ') // no change
       .replace(/word word word word\s|mmMwWLliI0fiflO&1|BESbswy/g, '') // typography
       .replace(/https?\:\/\/\S+/gi, ' ') // URLs
@@ -180,77 +157,108 @@ export default class LanguageDetector {
     rawText = '';
 
     const maxOccurences = 2; // change
+  
+    let scoreWord : IObjectKeys = {};
+    let matchWords : IObjectKeys = {};  // keep track of words seen 
+    let scoreLetter : any = {};        // initialize score for letters
+    let totalLetters = 0;
+    let matchLetters : any = {};
+    let totalMatchWords : any = {};
 
-    for(const language of this.languages) {      
-      scoreWord[language] = 0;     // initialize score for words
-      let matchWords : IObjectKeys = {};  // keep track of words seen 
-      let scoreLetter = 0;        // initialize score for letters
-      let totalLetters = 0;
-      let matchLetters = 0;
-      let totalMatchWords = 0;
 
-      const lettersOnly = Object.keys(stats[language]["topWords"] || {}).length == 0;
+    for(let word of words) {
+      totalLetters += word.length; // used only with letters
 
-      this.debug(`Language ${language}, lettersOnly: ${lettersOnly}`);
+      if (! (word in matchWords)) {
+        matchWords[word] = 0;
+      }
+      else {
+        matchWords[word] = matchWords[word] + 1;
 
-      for(let word of words) {
-        if (lettersOnly) {
-          totalLetters += word.length; // used only with letters
+        if (matchWords[word] >= maxOccurences) {
+          continue;
         }
+      }
 
-        if (! (word in matchWords)) {
-          matchWords[word] = 0;
-        }
-        else {
-          matchWords[word] = matchWords[word] + 1;
+      // Word matches
+      if (word.length >= minChars) {
+        if (stats.hasOwnProperty(word)) {
+          const values = stats[word];
+          for (const language of Object.keys(values)) {
+            if (!this.languages.includes(language)) {
+              continue; // skip languages not supported
+            }
 
-          if (matchWords[word] >= maxOccurences) {
-            continue;
-          }
-        }
+            if (!scoreWord.hasOwnProperty(language)) {
+              scoreWord[language] = 0;
+            }
 
+            const value = values[language];
 
-        if (!lettersOnly && word.length >= minChars) {
-          if (stats[language]['topWords'].hasOwnProperty(word)) { 
-            let value = stats[language]['topWords'][word];
-            totalMatchWords++;
-            scoreWord[language] = scoreWord[language] + value * Math.pow(word.length - 1, 2);
+            if (!totalMatchWords.hasOwnProperty(language)) {
+              totalMatchWords[language] = 0;
+            }
+
+            totalMatchWords[language]++;
+            scoreWord[language] += value * Math.pow(word.length - 1, 2.5);
             this.debug(`Word ${word} found in topWords for ${language} with score ${value} (total score: ${scoreWord[language]})`);
           }
         }
-
-        if (lettersOnly) {
-          for (const letter of word) {
-            const value = stats[language]['topLetters'][letter];
-            if (value && value > 0) {
-              matchLetters++;
-
-              scoreLetter += value;
-            }
-          }
-        }
       }
 
+      // Letter matches
+      for (const letter of word) {
+        if (!stats.hasOwnProperty(letter)) {
+          continue; // skip letters not in stats
+        }
+        const values = stats[letter];
+        for (const language of Object.keys(values)) {
+          if (!this.languages.includes(language)) {
+            continue; // skip languages not supported
+          }
+
+          if (!scoreLetter.hasOwnProperty(language)) {
+            scoreLetter[language] = 0;
+          }
+
+          const value = values[language];
+          matchLetters[language] = (matchLetters[language] || 0) + 1;
+          scoreLetter[language] += value;
+        }
+      } 
+    }
+
+    for(const language of Object.keys(scoreWord)) {
       this.debug(`Language ${language} initial scoreWord: ${scoreWord[language]}`);
-      scoreWord[language] = scoreWord[language] * Math.pow(totalMatchWords, 2) / words.length; // normalize by the number of words matched
+      scoreWord[language] = scoreWord[language] * Math.pow(totalMatchWords[language], 2) / words.length; // normalize by the number of words matched
 
       this.debug(`Language ${language} scoreWord: ${scoreWord[language]}`);
+    }
 
-      // Formula
-      if (!lettersOnly)
+    for (const language of Object.keys(scoreLetter)) {
+      this.debug(`Language ${language} initial scoreLetter: ${scoreLetter[language]}`);
+      scoreWord[language] = scoreLetter[language] * matchLetters[language] / totalLetters * 100; 
+
+      if (this.languageInfo.compact.includes(language)) {
+        scoreWord[language] *= 1.2;
+      }
+    }
+
+    // Merge datasets
+    for (const source of Object.keys(this.mergeDatasets)) { // 'code': 'en'
+      if (!scoreWord.hasOwnProperty(source))
         continue;
 
-      if (lettersOnly) {
-        scoreWord[language] = scoreLetter * matchLetters / totalLetters * 100; // only letters
-        this.debug(`Language ${language} scoreLetter: ${scoreWord[language]} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters})`);
-
-        if (this.languageInfo.compact.includes(language)) {
-          scoreWord[language] *= 1.2;
-        }
+      const destination = this.mergeDatasets[source];
+      if (!scoreWord.hasOwnProperty(destination)) {
+        scoreWord[destination] = 0;
       }
 
-      this.debug(`Language ${language} score: ${scoreWord[language]} (totalLetters: ${totalLetters}, matchLetters: ${matchLetters}})`);
+      this.debug(`Merging dataset ${source} into ${destination} with score ${scoreWord[source]}`);
+      scoreWord[destination] += scoreWord[source];
+      delete scoreWord[source];
     }
+
 
     // Merge languages with multiple alphabets
     for (const destination of Object.keys(this.mergeResults)) { // 'zh': ['zhs', 'zht']
@@ -278,7 +286,6 @@ export default class LanguageDetector {
           delete scoreWord[source];
       }
     }
-
 
     return scoreWord;
   }
