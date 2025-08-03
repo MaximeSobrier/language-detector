@@ -200,7 +200,7 @@ export default class LanguageDetector {
             }
 
             totalMatchWords[language]++;
-            scoreWord[language] += value * Math.pow(word.length - 1, 2.5);
+            scoreWord[language] += value * Math.pow(word.length - 1, 2);
             this.debug(`Word ${word} found in topWords for ${language} with score ${value} (total score: ${scoreWord[language]})`);
           }
         }

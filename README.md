@@ -76,7 +76,7 @@ If the language with highest score has value of 100, only languages with a score
 
 ### Configuration
 
-The list of supported languages and their attributes (top letters and words) are contained in languages.json. This library is built with the top 10,000 words and letters for each language. Other datasets are available on [][GitHub](https://github.com/MaximeSobrier/language-detector): top 1k, 2k, 5k, 10k and 20k. See the research paper (coming soon) for the performances of each dataset.
+The list of supported languages and their attributes (top letters and words) are contained in languages.json. This library is built with the top 10,000 words and letters for each language. Other datasets are available on [GitHub](https://github.com/MaximeSobrier/language-detector): top 1k, 2k, 5k, 10k and 20k. See the research paper (coming soon) for the performances of each dataset.
 
 ## Tests
 
