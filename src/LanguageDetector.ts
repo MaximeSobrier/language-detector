@@ -55,6 +55,7 @@ export default class LanguageDetector {
   private skipSimilarOn = false;
   private mergeResults : IArrayKeys = { };
   private mergeDatasets : IStringKeys = {  };
+  private algorithm : any = {};
 
   /** 
     Build the dataset for all supported languages
@@ -62,19 +63,22 @@ export default class LanguageDetector {
     @param mergeResults -  Merge languages with different alphabets
     @param mergeDatasets - Merge special datasets with a language
     @param skipSimilar - Skip similar languages (for top result only)
+    @param algorithm - Change contants used by the algorithm
     @param debug - Enable debug mode
   */
   constructor(
     languages : string[] = [],
-    mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] , 'bn': ['bn', 'bnr'], 'hi': ['hi', 'hir'] },  
-    mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'}, 
-    skipSimilar : boolean = false, 
+    mergeResults : IArrayKeys = { 'zh': ['zhs', 'zht'] , 'bn': ['bn', 'bnr'], 'hi': ['hi', 'hir'] },
+    mergeDatasets: IStringKeys = {'code': 'en', 'misc': 'en'},
+    skipSimilar : boolean = false,
+    algorithm: any = {},
     debug : boolean = false
   ) {
     this.debugOn = debug;
     this.mergeResults = mergeResults;
     this.skipSimilarOn = skipSimilar;
     this.mergeDatasets = mergeDatasets;
+    this.algorithm = algorithm;
 
     const allLanguages : string[] = stats['__languages__'];
     // console.log(allLanguages);
@@ -139,10 +143,10 @@ export default class LanguageDetector {
     @returns <language>: <score> key pairs
   */
   getLanguagesWithScores(rawText: string = '') : IObjectKeys {
-    const words = rawText.replace(/-+|[’'´‘]|[\/,&•‎…\-±…»·\–¶±·\– ³¯\—›；；《》〔〕\(\)．–¿\u200B\u2588\u2000-\u2BFF\u2E00-\u2E7F\uE000-\uF8FF\uFE00-\uFE2F\uFF00-\uFFFF]/gi, ' ') // no change
+    const words = rawText.replace(/-+|[’'´‘ʼꞌ]|[\/,&•‎…\-±…»·\–¶±·\– ³¯\—›；；《》〔〕\(\)．–¿\u200B\u2588\u2000-\u2BFF\u2E00-\u2E7F\uE000-\uF8FF\uFE00-\uFE2F\uFF00-\uFFFF꞉]/gi, ' ') // no change
       .replace(/word word word word\s|mmMwWLliI0fiflO&1|BESbswy/g, '') // typography
       .replace(/https?\:\/\/\S+/gi, ' ') // URLs
-      .replace(/[0-9²\)\(\]\[\+@#%\&\*\_\.=\{\}'",;\:><!\|“”\?„‘）（く‹‹\u200e˝¾¿¼¸…½°º‚´»€±·¯\—›\.。、「」：，•¶"‡]/g, ' ')
+      .replace(/[0-9²\)\(\]\[\+@#%\&\*\_\.=\{\}'",;\:><!\|“”\?„‘）（く‹‹\u200e˝¾¿¼¸…½°º‚´»€±·¯\—›\.。、「」：，•¶"‡ɨ¹]/g, ' ')
       .replace(/零一二三四五六七八九十百两千/g, '') // Chinese numbers
       .replace(/[\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4]/g, ' ') // Hebrew punctuation
       .replace(/\p{Extended_Pictographic}/ug, '')
@@ -156,7 +160,9 @@ export default class LanguageDetector {
 
     rawText = '';
 
-    const maxOccurences = 2; // change
+    const maxOccurences = this.algorithm.maxOccurences ?? 2; 
+    const power = this.algorithm.power ?? 2;
+    const lengthSubtract = this.algorithm.lengthSubtract ?? 1;
   
     let scoreWord : IObjectKeys = {};
     let matchWords : IObjectKeys = {};  // keep track of words seen 
@@ -200,7 +206,7 @@ export default class LanguageDetector {
             }
 
             totalMatchWords[language]++;
-            scoreWord[language] += value * Math.pow(word.length - 1, 2);
+            scoreWord[language] += value * Math.pow(word.length - lengthSubtract, power);
             this.debug(`Word ${word} found in topWords for ${language} with score ${value} (total score: ${scoreWord[language]})`);
           }
         }
@@ -230,7 +236,7 @@ export default class LanguageDetector {
 
     for(const language of Object.keys(scoreWord)) {
       this.debug(`Language ${language} initial scoreWord: ${scoreWord[language]}`);
-      scoreWord[language] = scoreWord[language] * Math.pow(totalMatchWords[language], 2) / words.length; // normalize by the number of words matched
+      scoreWord[language] = scoreWord[language] * Math.pow(totalMatchWords[language], power) / words.length; // normalize by the number of words matched
 
       this.debug(`Language ${language} scoreWord: ${scoreWord[language]}`);
     }
@@ -286,6 +292,9 @@ export default class LanguageDetector {
           delete scoreWord[source];
       }
     }
+
+     // round to 2 decimal places
+    Object.keys(scoreWord).map((language: string) => scoreWord[language] = Math.round(scoreWord[language] * 100) / 100);
 
     return scoreWord;
   }
